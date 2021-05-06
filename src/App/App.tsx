@@ -1,50 +1,22 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
+import { Lines } from './Lines'
 import { getCoordsFromKey } from './getCoordsFromKey'
 
-const Lines = () => (
-	<div
-		id='container'
-		style={{
-			position: 'absolute',
-			width: '100%',
-			paddingTop: '10px',
-			top: 0,
-			bottom: 0,
-			backgroundColor: 'rgba(0,0,0,0)',
-			paddingBottom: '4px',
-			'-webkit-user-select': 'none',
-			'-webkit-app-region': 'drag',
-			cursor: 'pointer',
-			display: 'flex',
-			flexDirection: 'column',
-			justifyContent: 'space-between',
-		}}
-	>
-		{[1, 2, 3].map((key) => (
-			<div
-				key={key}
-				style={{
-					height: '1px',
-					marginBottom: key === 2 ? '0px' : 0,
-					backgroundColor: 'rgba(255, 255, 255,1)',
-					width: '100%',
-					boxShadow: '0 1px 1px rgba(0, 0, 0,0.2)',
-				}}
-			/>
-		))}
-	</div>
-)
+const forBrandon = true
+if (forBrandon) console.log('building for brandon')
 
 const App = () => {
 	const getTop = () =>
 		document.querySelector('#container').style.paddingTop.match(/\d*/)
 
-  function moveBy(xDelta, yDelta) {
-    window.resizeBy(-1, 0)
-    if (xDelta) window.resizeBy(0, 2)
-    window.moveBy(xDelta, yDelta)
-  }
+	function moveBy(xDelta, yDelta) {
+		if (forBrandon) {
+			window.resizeBy(-1, 0)
+			if (xDelta) window.resizeBy(0, 2)
+		}
+		window.moveBy(xDelta, yDelta)
+	}
 
 	function setBottom(delta: number) {
 		const container = document.querySelector('#container')
@@ -56,8 +28,8 @@ const App = () => {
 			container.style.paddingTop = `${current - delta}px`
 		}
 	}
-  function resizeWindow(x: number, y: number): void {
-    console.log('resizing window', y)
+	function resizeWindow(x: number, y: number): void {
+		console.log('resizing window', x, y)
 		if (x) window.resizeBy(x, 0)
 		else {
 			if (window.outerHeight + y <= 100 || getTop() > 10) {
@@ -68,29 +40,42 @@ const App = () => {
 			}
 		}
 	}
-	function handleKeyDown(e) {
-		const smallStep = 3
-		const largeStep = smallStep * 3
-		const speed = e.shiftKey ? smallStep : largeStep
-    const [x, y] = getCoordsFromKey(e.key, speed)
-
-    const controls = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
-    if (!controls.includes(e.key)) return
-
-    console.log(e, e.ctrlKey, y)
-
-    if (e.ctrlKey) {
-      //if (y < 0) resizeWindow(x, -4)
-      //else resizeWindow(x, 2)
-      moveBy(x, y)
-      window.resizeBy(0, -2)
-    } else resizeWindow(x, -y)
-	}
+	useEffect(() => window.resizeTo(400, 100), [])
+	const [timesMoved, setTimesMoved] = useState(0)
+	const [currentStep, setCurrentStep] = useState(1)
 	useEffect(() => {
-		window.resizeTo(600, 100)
+		if (timesMoved >= 30) {
+			setCurrentStep(15)
+		} else if (timesMoved >= 15) {
+			setCurrentStep(10)
+		} else if (timesMoved >= 5) {
+			setCurrentStep(5)
+		} else setCurrentStep(1)
+	}, [timesMoved])
+	const handleKeyDown = (e: KeyboardEvent) => {
+		const [x, y] = getCoordsFromKey(e.key, currentStep)
+		const controls = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
+		if (!controls.includes(e.key)) return
+		setTimesMoved(timesMoved + 1)
+		if (e.ctrlKey || e.shiftKey || e.altKey) resizeWindow(x, -y)
+		else {
+			moveBy(x, y)
+			if (forBrandon) window.resizeBy(0, -2)
+		}
+	}
+	const handleKeyUp = () => {
+		setCurrentStep(1)
+		setTimesMoved(0)
+	}
+
+	useEffect(() => {
 		addEventListener('keydown', handleKeyDown)
-		return () => removeEventListener('keydown', handleKeyDown)
-	}, [])
+		addEventListener('keyup', handleKeyUp)
+		return () => {
+			removeEventListener('keydown', handleKeyDown)
+			removeEventListener('keyup', handleKeyUp)
+		}
+	}, [timesMoved])
 	return <Lines />
 }
 
