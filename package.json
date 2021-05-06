@@ -99,7 +99,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ruler/ruler.git"
+    "url": "git+https://github.com/mattdanielmurphy/ruler.git"
   },
   "author": {
     "name": "Matthew Daniel Murphy",
