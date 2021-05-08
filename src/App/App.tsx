@@ -4,12 +4,10 @@ import { Lines } from './Lines'
 import { getCoordsFromKey } from './getCoordsFromKey'
 import { getTop } from './getTop'
 
-const forBrandon = true
+const forBrandon = false
 if (forBrandon) console.log('building for brandon')
 
 const App = (): JSX.Element => {
-	// initialization
-	useEffect(() => window.resizeTo(400, 100), [])
 	const container = ((): HTMLElement | null =>
 		document.querySelector('#container'))()
 
@@ -42,40 +40,66 @@ const App = (): JSX.Element => {
 		}
 	}
 	const [timesMoved, setTimesMoved] = useState(0)
-	const [currentStep, setCurrentStep] = useState(1)
+	const [keysDown, setKeysDown] = useState({})
+	const [modifierHeld, setModifierHeld] = useState(false)
 
 	const handleKeyDown = (e: KeyboardEvent) => {
-		const [x, y] = getCoordsFromKey(e.key, currentStep)
-		const controls = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
-		if (!controls.includes(e.key)) return
 		setTimesMoved(timesMoved + 1)
-		if (e.ctrlKey || e.shiftKey || e.altKey) resizeBy(x, -y)
-		else {
-			moveBy(x, y)
-			if (forBrandon) window.resizeBy(0, -2)
+		if (!keysDown[e.key]) {
+			setKeysDown({ ...keysDown, [e.key]: e })
 		}
 	}
-	const handleKeyUp = () => {
-		setCurrentStep(1)
+	const handleKeyUp = (e) => {
+		const newKeysDown = keysDown
+		delete newKeysDown[e.key]
+		setKeysDown(newKeysDown)
 		setTimesMoved(0)
+	}
+	function handleWheel(e: MouseEvent) {
+		const { deltaY, deltaX } = e
+		if (modifierHeld) window.moveBy(deltaX, deltaY)
+		else window.resizeBy(deltaX, -deltaY)
 	}
 
 	useEffect(() => {
-		if (timesMoved >= 30) {
-			setCurrentStep(15)
-		} else if (timesMoved >= 15) {
-			setCurrentStep(10)
-		} else if (timesMoved >= 5) {
-			setCurrentStep(5)
-		} else setCurrentStep(1)
+		const modifierHeld = Object.values(keysDown).some(
+			(e) => e.ctrlKey || e.shiftKey || e.altKey,
+		)
+		if (modifierHeld) setModifierHeld(true)
+		else setModifierHeld(false)
 
+		Object.values(keysDown).forEach((e) => {
+			const stepValue =
+				timesMoved > 30
+					? 60
+					: timesMoved > 20
+					? 40
+					: timesMoved > 10
+					? 20
+					: timesMoved > 3
+					? 10
+					: 1
+			const [x, y] = getCoordsFromKey(e.key, stepValue)
+			const controls = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
+			if (!controls.includes(e.key)) return
+			if (e.ctrlKey || e.shiftKey || e.altKey) resizeBy(x, -y)
+			else {
+				moveBy(x, y)
+				if (forBrandon) window.resizeBy(0, -2)
+			}
+		})
+	}, [keysDown, timesMoved])
+
+	useEffect(() => {
 		addEventListener('keydown', handleKeyDown)
 		addEventListener('keyup', handleKeyUp)
+		addEventListener('wheel', handleWheel)
 		return () => {
 			removeEventListener('keydown', handleKeyDown)
 			removeEventListener('keyup', handleKeyUp)
+			removeEventListener('wheel', handleWheel)
 		}
-	}, [timesMoved])
+	}, [timesMoved, keysDown, modifierHeld])
 
 	return <Lines />
 }
